@@ -1,0 +1,141 @@
+subscription subscriptions_viewerMessageLimitUpdated_Subscription {
+  viewerMessageLimitUpdated {
+    ...SettingsSubscriptionSection_viewer
+    id
+  }
+}
+
+fragment SettingsSubscriptionSectionNonSubscriberView_viewer on Viewer {
+  ...WebSubscriptionPaywallMainModal_viewer
+}
+
+fragment SettingsSubscriptionSectionSubscriberView_viewer on Viewer {
+  subscription {
+    isActive
+    expiresTime
+    purchaseType
+    isAnnualSubscription
+    willCancelAtPeriodEnd
+    id
+  }
+}
+
+fragment SettingsSubscriptionSection_viewer on Viewer {
+  availableBots {
+    displayName
+    messageLimit {
+      canSend
+      numMessagesRemaining
+      resetTime
+      dailyBalance
+      dailyLimit
+      monthlyBalance
+      monthlyLimit
+      monthlyBalanceRefreshTime
+      shouldShowRemainingMessageCount
+    }
+    id
+  }
+  subscription {
+    isActive
+    id
+  }
+  isEligibleForWebSubscriptions
+  ...SettingsSubscriptionSectionNonSubscriberView_viewer
+  ...SettingsSubscriptionSectionSubscriberView_viewer
+  ...WebSubscriptionSuccessMessage_useWebSubscriptionSuccessMessage_viewer
+}
+
+fragment SubscriptionMessageLimitExplanation_viewer on Viewer {
+  availableBots {
+    displayName
+    messageLimit {
+      monthlyLimit
+    }
+    id
+  }
+}
+
+fragment WebSubscriptionFreeTrialPriceInfo_viewer on Viewer {
+  webSubscriptionPriceInfo {
+    yearlyPrice
+    yearlyPricePerMonth
+    id
+  }
+}
+
+fragment WebSubscriptionFreeTrialTermsOfService_viewer on Viewer {
+  webSubscriptionPriceInfo {
+    yearlyPrice
+    id
+  }
+}
+
+fragment WebSubscriptionFreeTrial_viewer on Viewer {
+  ...SubscriptionMessageLimitExplanation_viewer
+  ...WebSubscriptionFreeTrialPriceInfo_viewer
+  ...WebSubscriptionFreeTrialTermsOfService_viewer
+  ...WebSubscriptionSubscribeButton_viewer
+}
+
+fragment WebSubscriptionPaywallMainModal_viewer on Viewer {
+  ...WebSubscriptionPaywallMain_viewer
+}
+
+fragment WebSubscriptionPaywallMain_viewer on Viewer {
+  ...WebSubscriptionPaywall_viewer
+  ...WebSubscriptionFreeTrial_viewer
+  webSubscriptionPriceInfo {
+    isFreeTrialAvailable
+    id
+  }
+}
+
+fragment WebSubscriptionPaywall_MonthlyPlan_viewer on Viewer {
+  webSubscriptionPriceInfo {
+    monthlyPrice
+    id
+  }
+}
+
+fragment WebSubscriptionPaywall_Plans_viewer on Viewer {
+  ...WebSubscriptionPaywall_YearlyPlan_viewer
+  ...WebSubscriptionPaywall_MonthlyPlan_viewer
+}
+
+fragment WebSubscriptionPaywall_YearlyPlan_viewer on Viewer {
+  webSubscriptionPriceInfo {
+    yearlyPrice
+    yearlyPricePerMonth
+    yearlyPercentageSavings
+    isFreeTrialAvailable
+    id
+  }
+}
+
+fragment WebSubscriptionPaywall_viewer on Viewer {
+  ...SubscriptionMessageLimitExplanation_viewer
+  ...WebSubscriptionPaywall_Plans_viewer
+  ...WebSubscriptionSubscribeButton_viewer
+  webSubscriptionPriceInfo {
+    monthlyPrice
+    yearlyPrice
+    id
+  }
+}
+
+fragment WebSubscriptionSubscribeButton_viewer on Viewer {
+  webSubscriptionPriceInfo {
+    isFreeTrialAvailable
+    id
+  }
+}
+
+fragment WebSubscriptionSuccessMessage_useWebSubscriptionSuccessMessage_viewer on Viewer {
+  subscription {
+    isActive
+    expiresTime
+    willCancelAtPeriodEnd
+    id
+  }
+}

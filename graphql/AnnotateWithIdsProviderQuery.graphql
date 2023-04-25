@@ -1,0 +1,6 @@
+query AnnotateWithIdsProviderQuery {
+  viewer {
+    canAnnotateWithIds: booleanGate(gateName: "annotate_with_ids")
+    id
+  }
+}

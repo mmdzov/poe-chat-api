@@ -5,7 +5,7 @@ const WebSocket = require("ws");
 class Client {
   gql_url = "/api/gql_POST";
   settings_url = "/api/settings";
-  home_url = "https://poe.com";
+  origin_url = "https://poe.com";
 
   channel = {};
 
@@ -14,16 +14,39 @@ class Client {
     this.cookie = `p-b=${token}`;
 
     this.request = axios.create({
-      baseURL: "https://poe.com",
+      baseURL: this.origin_url,
       headers: {
         Cookie: this.cookie,
         "content-type": "application/json",
+        Referrer: "https://poe.com/",
+        Origin: this.origin_url,
+        Host: "poe.com",
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-origin",
+        "User-Agent":
+          "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36",
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Accept-Language": "en-US,en;q=0.9,und;q=0.8,af;q=0.7",
+        "Cache-Control": "no-cache",
+        Dnt: "1",
+        Pragma: "no-cache",
+        "Sec-Ch-Ua":
+          '"Google Chrome";v="111", "Not(A:Brand";v="8", "Chromium";v="111"',
+        "Sec-Ch-Ua-Mobile": "?0",
+        "Sec-Ch-Ua-Platform": '"Chrome OS"',
+        "Sec-Gpc": "1",
+        "Upgrade-Insecure-Requests": "1",
       },
     });
 
-    const MAX_RETRIES = 20;
+    this.MAX_RETRIES = 15;
 
-    const RETRY_DELAY = 2000;
+    this.RETRY_DELAY = 2000;
+
+    this.wsRetryCount = 0;
 
     this.request.interceptors.request.use((config) => {
       config.retryCount = config.retryCount || 0;
@@ -33,13 +56,14 @@ class Client {
     this.request.interceptors.response.use(
       (response) => response,
       (error) => {
-        const { config, response } = error;
+        const { config } = error;
 
         console.log("Retrying :", config.retryCount);
-        if (config.retryCount < MAX_RETRIES) {
+
+        if (config.retryCount < this.MAX_RETRIES) {
           config.retryCount++;
           return new Promise((resolve) =>
-            setTimeout(() => resolve(this.request(config)), RETRY_DELAY),
+            setTimeout(() => resolve(this.request(config)), this.RETRY_DELAY),
           );
         }
 
@@ -96,7 +120,7 @@ class Client {
     console.log("Downloading next_data...");
 
     return this.request
-      .get(this.home_url)
+      .get(this.origin_url)
       .then((res) => {
         const jsonRegex =
           /<script id="__NEXT_DATA__" type="application\/json">(.+?)<\/script>/;
@@ -120,6 +144,8 @@ class Client {
     params = { message, bot: "capybara", withChatBreak: true },
     callback = () => {},
   ) {
+    await this.connectWebSocket();
+
     let counter = 0;
 
     const wsMessageHandler = (message) => {
@@ -130,8 +156,9 @@ class Client {
 
       data.messages = data.messages.map((item) => JSON.parse(item));
 
-      callback({ data });
+      this.ws.close(1011, "should_close");
       counter++;
+      callback(data);
     };
 
     this.ws.on("message", wsMessageHandler);
@@ -154,48 +181,45 @@ class Client {
       .setHeaders(this.formkey, this.channel.channel);
 
     try {
-      const res = await this.request.post("/api/gql_POST", gql.query, {
+      const res = await this.request.post(this.gql_url, gql.query, {
         headers: {
           ...gql.headers,
         },
       });
-
-      return this;
     } catch (e) {
       console.log(e);
     }
   }
 
   async connectWebSocket() {
-    console.log("WS Connecting...");
-
-    const RETRY_INTERVAL_MS = 2000;
-    const MAX_RETRIES = 20;
-
-    let retryCount = 0;
+    console.log("WebSocket Connecting...");
 
     const wsDomain = Math.floor(Math.random() * 1000000) + 1;
 
-    // console.log(this.channel);
-
-    const query = `?min_seq=${this.channel?.minSeq}&channel=${this.channel.channel}&hash=${this.channel.channelHash}`;
+    const query = `?min_seq=${this.channel?.minSeq}&channel=${this.channel?.channel}&hash=${this.channel?.channelHash}`;
 
     const ws = new WebSocket(
-      `wss://tch${wsDomain}.tch.${this.channel.baseHost}/up/${this.channel.boxName}/updates` +
+      `wss://tch${wsDomain}.tch.${this.channel?.baseHost}/up/${this.channel?.boxName}/updates` +
         query,
+      {},
     );
+    ws.on("close", (code, reason) => {
+      console.log(code, reason.toString());
 
-    ws.on("close", () => {
+      if (reason.includes("should_close")) return;
+
       console.log("WebSocket disconnected!");
-      if (retryCount < MAX_RETRIES) {
+      if (this.wsRetryCount < this.MAX_RETRIES) {
         console.log(
-          `Retrying WebSocket connection in ${RETRY_INTERVAL_MS}ms...`,
+          `Retrying WebSocket connection in ${this.RETRY_DELAY}ms...`,
         );
-        setTimeout(this.connectWebSocket, RETRY_INTERVAL_MS);
-        retryCount++;
+        new Promise((resolve) =>
+          setTimeout(() => resolve(this.connectWebSocket()), this.RETRY_DELAY),
+        );
+        this.wsRetryCount++;
       } else {
         console.log(
-          `WebSocket connection failed after ${MAX_RETRIES} attempts.`,
+          `WebSocket connection failed after ${this.MAX_RETRIES} attempts.`,
         );
       }
     });
@@ -211,14 +235,17 @@ class Client {
     await new Promise((res, rej) => {
       ws.on("open", () => {
         console.log("WebSocket connected!");
-        retryCount = 0;
+        this.wsRetryCount = 0;
 
+        this.ws = ws;
         return res(true);
       });
     });
 
-    this.ws = ws;
+    return this;
   }
+
+  getMessages() {}
 
   async subscribe() {
     await this.getNextData(true);
@@ -233,12 +260,11 @@ class Client {
         .setHeaders(this.formkey, this.channel.channel);
 
       try {
-        const res = await this.request.post("/api/gql_POST", gql.query, {
+        const res = await this.request.post(this.gql_url, gql.query, {
           headers: {
             ...gql.headers,
           },
         });
-        // console.log(res.data);
       } catch (e) {
         console.log(e);
       }
@@ -249,7 +275,7 @@ class Client {
 
       gql
         .readyQuery("subscriptionsMutation", {
-          subscriptions: gql.setSubs(
+          subscriptions: gql.getSubs(
             "messageAdded",
             "messageDeleted",
             "viewerStateUpdated",
@@ -259,7 +285,7 @@ class Client {
         .setHeaders(this.formkey, this.channel.channel);
 
       try {
-        const res = await this.request.post("/api/gql_POST", gql.query, {
+        const res = await this.request.post(this.gql_url, gql.query, {
           headers: {
             ...gql.headers,
           },
@@ -277,10 +303,7 @@ class Client {
   async initialize() {
     await this.getSettings();
 
-    await this.connectWebSocket();
-
     await this.subscribe();
-    // await this.getNextData(true);
 
     return this;
   }

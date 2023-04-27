@@ -58,8 +58,8 @@ class Gql {
     return this;
   }
 
-  // Set Subscriptions
-  setSubs(...subs) {
+  // Get Subscriptions
+  getSubs(...subs) {
     let subList = [];
 
     for (let i in subs) {

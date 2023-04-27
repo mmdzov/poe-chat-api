@@ -212,8 +212,6 @@ class Client {
       }
 
       ws.on("close", async (code, reason) => {
-        console.log(code, reason.toString());
-
         if (reason.includes("should_close")) return;
 
         console.log("WebSocket disconnected!");
@@ -257,12 +255,11 @@ class Client {
   }
 
   async getMessages(options = { update: true }) {
-    console.log(options);
     if (!this.next_data || options?.update) await this.getNextData(false);
 
     const messages =
-      this.next_data?.props?.pageProps?.payload?.chatOfBotDisplayName?.messagesConnection
-        ?.edges;
+      this.next_data?.props?.pageProps?.payload?.chatOfBotDisplayName
+        ?.messagesConnection?.edges;
 
     return messages;
   }

@@ -46,8 +46,6 @@ class Client {
 
     this.RETRY_DELAY = 2000;
 
-    this.wsRetryCount = 0;
-
     this.request.interceptors.request.use((config) => {
       config.retryCount = config.retryCount || 0;
       return config;
@@ -189,63 +187,85 @@ class Client {
     } catch (e) {
       console.log(e);
     }
+
+    return this;
   }
 
   async connectWebSocket() {
     console.log("WebSocket Connecting...");
 
-    const wsDomain = Math.floor(Math.random() * 1000000) + 1;
+    let ws = this.ws;
 
-    const query = `?min_seq=${this.channel?.minSeq}&channel=${this.channel?.channel}&hash=${this.channel?.channelHash}`;
+    const connect = async () => {
+      if (!ws) {
+        const wsDomain = Math.floor(Math.random() * 1000000) + 1;
 
-    const ws = new WebSocket(
-      `wss://tch${wsDomain}.tch.${this.channel?.baseHost}/up/${this.channel?.boxName}/updates` +
-        query,
-      {},
-    );
-    ws.on("close", (code, reason) => {
-      console.log(code, reason.toString());
+        const query = `?min_seq=${this.channel?.minSeq}&channel=${this.channel?.channel}&hash=${this.channel?.channelHash}`;
 
-      if (reason.includes("should_close")) return;
-
-      console.log("WebSocket disconnected!");
-      if (this.wsRetryCount < this.MAX_RETRIES) {
-        console.log(
-          `Retrying WebSocket connection in ${this.RETRY_DELAY}ms...`,
+        ws = new WebSocket(
+          `wss://tch${wsDomain}.tch.${this.channel?.baseHost}/up/${this.channel?.boxName}/updates` +
+            query,
+          {},
         );
-        new Promise((resolve) =>
-          setTimeout(() => resolve(this.connectWebSocket()), this.RETRY_DELAY),
-        );
-        this.wsRetryCount++;
-      } else {
-        console.log(
-          `WebSocket connection failed after ${this.MAX_RETRIES} attempts.`,
-        );
-      }
-    });
-
-    ws.on("error", (error) => {
-      console.error("WebSocket error:", error);
-    });
-
-    ws.on("unexpected-response", (e) => {
-      console.log("Unexpected Response: ", e);
-    });
-
-    await new Promise((res, rej) => {
-      ws.on("open", () => {
-        console.log("WebSocket connected!");
-        this.wsRetryCount = 0;
 
         this.ws = ws;
-        return res(true);
+      }
+
+      ws.on("close", async (code, reason) => {
+        console.log(code, reason.toString());
+
+        if (reason.includes("should_close")) return;
+
+        console.log("WebSocket disconnected!");
+        if (this.wsRetryCount < this.MAX_RETRIES) {
+          console.log(
+            `Retrying WebSocket connection in ${this.RETRY_DELAY}ms...`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, this.RETRY_DELAY));
+          await connect();
+          this.wsRetryCount++;
+        } else {
+          console.log(
+            `WebSocket connection failed after ${this.MAX_RETRIES} attempts.`,
+          );
+        }
       });
-    });
+
+      ws.on("error", (error) => {
+        console.error("WebSocket error:", error);
+      });
+
+      ws.on("unexpected-response", (e) => {
+        console.log("Unexpected Response: ", e);
+      });
+
+      const openPromise = new Promise((res, rej) => {
+        ws.on("open", () => {
+          console.log("WebSocket connected!");
+          this.wsRetryCount = 0;
+
+          res(true);
+        });
+      });
+
+      await openPromise;
+    };
+
+    await connect();
 
     return this;
   }
 
-  getMessages() {}
+  async getMessages(options = { update: true }) {
+    console.log(options);
+    if (!this.next_data || options?.update) await this.getNextData(false);
+
+    const messages =
+      this.next_data?.props?.pageProps?.payload?.chatOfBotDisplayName?.messagesConnection
+        ?.edges;
+
+    return messages;
+  }
 
   async subscribe() {
     await this.getNextData(true);

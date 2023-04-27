@@ -12,7 +12,6 @@ const cl = new Client(process.env.TOKEN);
   const res = await cl.sendMessage(
     {
       message: "Hello world",
-      withChatBreak: false,
     },
     (data) => {
       console.log(data.messages, "From callback");

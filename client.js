@@ -9,7 +9,12 @@ class Client {
 
   channel = {};
 
-  constructor(token) {
+  constructor(
+    token,
+    options = {
+      showSteps: true,
+    },
+  ) {
     this.token = token;
     this.cookie = `p-b=${token}`;
 
@@ -254,12 +259,30 @@ class Client {
     return this;
   }
 
-  async getMessages(options = { update: true }) {
+  async getMessages(
+    options = {
+      update: true,
+      botMessagesOnly: false,
+      humanMessagesOnly: false,
+      textMessages: false,
+      range: -1,
+    },
+  ) {
     if (!this.next_data || options?.update) await this.getNextData(false);
 
-    const messages =
+    let messages =
       this.next_data?.props?.pageProps?.payload?.chatOfBotDisplayName
-        ?.messagesConnection?.edges;
+        ?.messagesConnection?.edges || [];
+
+    if (options?.botMessagesOnly)
+      messages = messages.filter((item) => item.node.author === "capybara");
+    else if (options?.humanMessagesOnly)
+      messages = messages.filter((item) => item.node.author === "human");
+
+    if (options?.textMessages)
+      messages = messages.map((item) => item.node.text);
+
+    if (options?.range > 0) messages = messages.slice(-options?.range);
 
     return messages;
   }

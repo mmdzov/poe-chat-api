@@ -1,6 +1,7 @@
 const axios = require("axios");
 const Gql = require("./utils/Gql");
 const WebSocket = require("ws");
+const step = require("./utils/step");
 
 class Client {
   gql_url = "/api/gql_POST";
@@ -15,8 +16,13 @@ class Client {
       showSteps: true,
     },
   ) {
+    this.options = options;
+
     this.token = token;
     this.cookie = `p-b=${token}`;
+
+    this.MAX_RETRIES = 15;
+    this.RETRY_DELAY = 2000;
 
     this.request = axios.create({
       baseURL: this.origin_url,
@@ -47,10 +53,6 @@ class Client {
       },
     });
 
-    this.MAX_RETRIES = 15;
-
-    this.RETRY_DELAY = 2000;
-
     this.request.interceptors.request.use((config) => {
       config.retryCount = config.retryCount || 0;
       return config;
@@ -61,7 +63,7 @@ class Client {
       (error) => {
         const { config } = error;
 
-        console.log("Retrying :", config.retryCount);
+        step(`Retrying Request : ${config.retryCount}`, this.options.showSteps);
 
         if (config.retryCount < this.MAX_RETRIES) {
           config.retryCount++;
@@ -80,7 +82,7 @@ class Client {
   }
 
   async getSettings() {
-    console.log("Downloading Settings...");
+    step("Downloading Settings...", this.options.showSteps);
 
     let query = "";
 
@@ -120,7 +122,7 @@ class Client {
   }
 
   getNextData(overwrite_vars = false) {
-    console.log("Downloading next_data...");
+    step("Downloading next_data...", this.options.showSteps);
 
     return this.request
       .get(this.origin_url)
@@ -166,7 +168,7 @@ class Client {
 
     this.ws.on("message", wsMessageHandler);
 
-    console.log("Sending message...");
+    step("Sending message...", this.options.showSteps);
 
     const chatId =
       this.next_data.props.pageProps?.payload?.chatOfBotDisplayName?.chatId;
@@ -197,7 +199,7 @@ class Client {
   }
 
   async connectWebSocket() {
-    console.log("WebSocket Connecting...");
+    step("WebSocket Connecting...", this.options.showSteps);
 
     let ws = this.ws;
 
@@ -218,13 +220,15 @@ class Client {
 
       ws.on("close", async (code, reason) => {
         if (reason.includes("should_close"))
-          return console.log("WebSocket Connection Closed");
+          return step("WebSocket Connection Closed", this.options.showSteps);
 
-        console.log("WebSocket disconnected!");
+        step("WebSocket disconnected!", this.options.showSteps);
         if (this.wsRetryCount < this.MAX_RETRIES) {
-          console.log(
+          step(
             `Retrying WebSocket connection in ${this.RETRY_DELAY}ms...`,
+            this.options.showSteps,
           );
+
           await new Promise((resolve) => setTimeout(resolve, this.RETRY_DELAY));
           await connect();
           this.wsRetryCount++;
@@ -245,7 +249,7 @@ class Client {
 
       const openPromise = new Promise((res, rej) => {
         ws.on("open", () => {
-          console.log("WebSocket connected!");
+          step("WebSocket connected!", this.options.showSteps);
           this.wsRetryCount = 0;
 
           res(true);
@@ -289,14 +293,14 @@ class Client {
   }
 
   async chatBreak() {
-    console.log("Breaking Chat...");
+    step("Breaking Chat...", this.options.showSteps);
 
     await this.getNextData();
 
     const data =
       this?.next_data?.props?.pageProps?.payload?.chatOfBotDisplayName;
 
-    if (!data) throw new Error("The next_data Not Found");
+    if (!data) return console.log("The next_data Not Found");
 
     const gql = new Gql();
 
@@ -325,7 +329,7 @@ class Client {
   async subscribe() {
     await this.getNextData(true);
 
-    console.log("Subscribing...");
+    step("Subscribing...", this.options.showSteps);
 
     const AnnotateWithIdsProviderQuery = async () => {
       const gql = new Gql();

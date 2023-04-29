@@ -217,7 +217,8 @@ class Client {
       }
 
       ws.on("close", async (code, reason) => {
-        if (reason.includes("should_close")) return;
+        if (reason.includes("should_close"))
+          return console.log("WebSocket Connection Closed");
 
         console.log("WebSocket disconnected!");
         if (this.wsRetryCount < this.MAX_RETRIES) {
@@ -285,6 +286,38 @@ class Client {
     if (options?.range > 0) messages = messages.slice(-options?.range);
 
     return messages;
+  }
+
+  async chatBreak() {
+    console.log("Breaking Chat...");
+
+    await this.getNextData();
+
+    const data =
+      this?.next_data?.props?.pageProps?.payload?.chatOfBotDisplayName;
+
+    if (!data) throw new Error("The next_data Not Found");
+
+    const gql = new Gql();
+
+    gql
+      .readyQuery("chatHelpers_addMessageBreakEdgeMutation_Mutation", {
+        chatId: +data.chatId,
+        connections: [
+          `client:${data.id}:__ChatMessagesView_chat_messagesConnection_connection`,
+        ],
+      })
+      .setHeaders(this.formkey, this.channel.channel);
+
+    try {
+      const res = await this.request.post(this.gql_url, gql.query, {
+        headers: {
+          ...gql.headers,
+        },
+      });
+    } catch (e) {
+      console.log(e);
+    }
   }
 
   async subscribe() {

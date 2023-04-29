@@ -318,6 +318,8 @@ class Client {
     } catch (e) {
       console.log(e);
     }
+
+    return this;
   }
 
   async subscribe() {

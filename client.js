@@ -441,6 +441,12 @@ class Client {
       console.log(e);
     }
   }
+
+  async getBots() {
+    await this.getNextData(true);
+
+    return this.next_data?.props?.pageProps?.payload?.viewer?.availableBots;
+  }
 }
 
 module.exports = Client;

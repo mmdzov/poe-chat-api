@@ -19,16 +19,16 @@ class Client {
     this.options = options;
 
     this.token = token;
-    this.cookie = `p-b=${token}`;
+    if (token) this.cookie = `p-b=${token}`;
 
-    this.MAX_RETRIES = 15;
+    this.MAX_RETRIES = 15; // 15
     this.RETRY_DELAY = 2000;
 
     this.request = axios.create({
       baseURL: this.origin_url,
       headers: {
         Cookie: this.cookie,
-        "content-type": "application/json",
+        "Content-Type": "application/json",
         Referrer: "https://poe.com/",
         Origin: this.origin_url,
         Host: "poe.com",
@@ -53,13 +53,17 @@ class Client {
       },
     });
 
+    // if (token) this.request.defaults.headers["Cookie"] = this.cookie;
+
     this.request.interceptors.request.use((config) => {
       config.retryCount = config.retryCount || 0;
       return config;
     });
 
     this.request.interceptors.response.use(
-      (response) => response,
+      (response) => {
+        return response;
+      },
       (error) => {
         const { config } = error;
 
@@ -385,6 +389,57 @@ class Client {
     await this.subscribe();
 
     return this;
+  }
+
+  async createBot(
+    data = {
+      handle: null,
+      introduction: null,
+      description: null,
+      prompt: null,
+      isPrivateBot: false,
+      hasLinkification: false,
+      hasMarkdownRendering: true,
+      hasSuggestedReplies: false,
+      profilePictureUrl: null,
+      isPromptPublic: false,
+      model: "chinchilla",
+    },
+  ) {
+    const gql = new Gql();
+
+    const variables = {
+      model: data?.model ?? "chinchilla",
+      handle: data?.name ?? `Bot${Math.floor(Math.random() * 999999999)}`,
+      prompt: data?.prompt ?? "",
+      isPromptPublic: data?.isPromptPublic ?? false,
+      introduction: data?.introduction ?? "",
+      description: data?.description ?? "",
+      profilePictureUrl: data.profilePictureUrl,
+      apiUrl: null,
+      apiKey: null,
+      isApiBot: false,
+      hasLinkification: data?.hasLinkification ?? false,
+      hasMarkdownRendering: data?.hasMarkdownRendering ?? true,
+      hasSuggestedReplies: data?.hasSuggestedReplies ?? false,
+      isPrivateBot: data?.isPrivateBot ?? false,
+    };
+
+    gql
+      .readyQuery("CreateBotMain_poeBotCreate_Mutation", variables)
+      .setHeaders(this.formkey, this.channel.channel);
+
+    try {
+      const { data } = await this.request.post(this.gql_url, gql.query, {
+        headers: {
+          ...gql.headers,
+        },
+      });
+
+      return data.data.poeBotCreate;
+    } catch (e) {
+      console.log(e);
+    }
   }
 }
 

@@ -1,30 +1,21 @@
 const Client = require("./client");
-const crypto = require("crypto");
 const dotenv = require("dotenv");
 
 dotenv.config();
 
-const cl = new Client(process.env.TOKEN);
-
 (async () => {
-  await cl.initialize();
+  const cl = new Client(process.env.TOKEN);
 
-  const res = await cl.sendMessage(
-    {
-      message: "Hello world",
-    },
-    (data) => {
-      console.log(data.messages, "From callback");
-    },
-  );
+  // await cl.initialize();
 
-  // await cl.sendMessage(
+  // await cl.createBot();
+
+  // const res = await cl.sendMessage(
   //   {
-  //     message: "How are you doing?",
-  //     withChatBreak: false,
+  //     message: "Hello world",
   //   },
   //   (data) => {
-  //     console.log(data, "From callback");
+  //     console.log(data.messages, "From callback");
   //   },
   // );
 })();

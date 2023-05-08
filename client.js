@@ -442,8 +442,8 @@ class Client {
     }
   }
 
-  async getBots() {
-    await this.getNextData(true);
+  async getBots(options = { latestUpdate: true }) {
+    await this.getNextData(options?.latestUpdate);
 
     return this.next_data?.props?.pageProps?.payload?.viewer?.availableBots;
   }

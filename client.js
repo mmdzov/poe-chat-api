@@ -275,6 +275,7 @@ class Client {
       humanMessagesOnly: false,
       textMessages: false,
       range: -1,
+      bot: "capybara",
     },
   ) {
     if (!this.next_data || options?.update) await this.getNextData(false);
@@ -284,7 +285,7 @@ class Client {
         ?.messagesConnection?.edges || [];
 
     if (options?.botMessagesOnly)
-      messages = messages.filter((item) => item.node.author === "capybara");
+      messages = messages.filter((item) => item.node.author === options.bot);
     else if (options?.humanMessagesOnly)
       messages = messages.filter((item) => item.node.author === "human");
 

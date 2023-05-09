@@ -8,10 +8,7 @@ dotenv.config();
     showSteps: true,
   });
 
-  const client = await instance.init({ bot: "MmdJunior" });
-
-  await client.deleteAllMessages();
-
+  // const client = await instance.init({ bot: "MmdJunior" });
 
   // await client.sendMessage(
   //   {

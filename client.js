@@ -16,6 +16,10 @@ class Client {
     token,
     options = {
       showSteps: true,
+      request: {
+        max_retries: 0,
+        retry_delay: 0, // ms
+      },
     },
   ) {
     this.options = options;
@@ -23,8 +27,8 @@ class Client {
     this.token = token;
     if (token) this.cookie = `p-b=${token}`;
 
-    this.MAX_RETRIES = 15; // 15
-    this.RETRY_DELAY = 2000;
+    this.MAX_RETRIES = options?.request?.max_retries || 25; // 15
+    this.RETRY_DELAY = options?.request?.retry_delay || 2000;
 
     this.request = axios.create({
       baseURL: this.origin_url,
@@ -151,7 +155,7 @@ class Client {
 
   async sendMessage(
     params = { message, withChatBreak: true },
-    callback = () => {},
+    callback = (response) => {},
   ) {
     await this.connectWebSocket();
 
@@ -277,7 +281,7 @@ class Client {
       range: -1,
     },
   ) {
-    if (!this.next_data || options?.update) await this.getNextData(false);
+    if (!this?.next_data || options?.update) await this.getNextData(true);
 
     let messages =
       this.next_data?.props?.pageProps?.payload?.chatOfBotDisplayName
@@ -383,10 +387,10 @@ class Client {
     await subscriptionsMutation();
   }
 
-  async init({ bot = "capybara" }) {
+  async init(options = { bot: "capybara" }) {
     const instance = new Client(this.token, this.options);
 
-    instance.bot = bot;
+    instance.bot = options.bot;
     this.mainClass = this;
 
     await instance.getSettings();

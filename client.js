@@ -478,6 +478,29 @@ class Client {
       console.log(e);
     }
   }
+
+  async deleteAllMessages() {
+    const gql = new Gql();
+
+    gql
+      .readyQuery(
+        "SettingsDeleteAllMessagesButton_deleteUserMessagesMutation_Mutation",
+        {},
+      )
+      .setHeaders(this.formkey, this.channel.channel);
+
+    try {
+      await this.request.post(this.gql_url, gql.query, {
+        headers: {
+          ...gql.headers,
+        },
+      });
+
+      return true;
+    } catch (e) {
+      console.log(e);
+    }
+  }
 }
 
 module.exports = Client;

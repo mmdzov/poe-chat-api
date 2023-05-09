@@ -10,7 +10,7 @@ dotenv.config();
 
   const client = await instance.init({ bot: "MmdJunior" });
 
-  // await client.deleteBot();
+  await client.deleteAllMessages();
 
 
   // await client.sendMessage(

@@ -8,7 +8,10 @@ dotenv.config();
     showSteps: true,
   });
 
-  const client = await instance.init({ bot: "capybara" });
+  const client = await instance.init({ bot: "MmdJunior" });
+
+  // await client.deleteBot();
+
 
   // await client.sendMessage(
   //   {

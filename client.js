@@ -10,6 +10,7 @@ class Client {
 
   channel = {};
   bot = "capybara";
+  mainClass = null;
 
   constructor(
     token,
@@ -386,6 +387,7 @@ class Client {
     const instance = new Client(this.token, this.options);
 
     instance.bot = bot;
+    this.mainClass = this;
 
     await instance.getSettings();
 
@@ -449,6 +451,32 @@ class Client {
     await this.getNextData(options?.latestUpdate);
 
     return this.next_data?.props?.pageProps?.payload?.viewer?.availableBots;
+  }
+
+  async deleteBot() {
+    const gql = new Gql();
+
+    const botId =
+      this?.next_data?.props?.pageProps?.payload?.chatOfBotDisplayName
+        ?.defaultBotObject?.botId;
+
+    gql
+      .readyQuery("BotDeletionButton_poeBotDelete_Mutation", {
+        botId,
+      })
+      .setHeaders(this.formkey, this.channel.channel);
+
+    try {
+      const res = await this.request.post(this.gql_url, gql.query, {
+        headers: {
+          ...gql.headers,
+        },
+      });
+
+      return true;
+    } catch (e) {
+      console.log(e);
+    }
   }
 }
 

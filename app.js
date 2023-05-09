@@ -4,17 +4,13 @@ const dotenv = require("dotenv");
 dotenv.config();
 
 (async () => {
-  const cl = new Client(process.env.TOKEN,{
-    showSteps: false
+  const instance = new Client(process.env.TOKEN, {
+    showSteps: true,
   });
 
-  // await cl.initialize();
+  const client = await instance.init({ bot: "capybara" });
 
-  // const bots = await cl.getBots();
-
-  // console.log(bots)
-
-  // const res = await cl.sendMessage(
+  // await client.sendMessage(
   //   {
   //     message: "Hello world",
   //   },
@@ -22,4 +18,8 @@ dotenv.config();
   //     console.log(data.messages, "From callback");
   //   },
   // );
+
+  // // const bots = await cl.getBots();
+
+  // // console.log(bots)
 })();

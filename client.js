@@ -9,6 +9,7 @@ class Client {
   origin_url = "https://poe.com";
 
   channel = {};
+  bot = "capybara";
 
   constructor(
     token,
@@ -52,8 +53,6 @@ class Client {
         "Upgrade-Insecure-Requests": "1",
       },
     });
-
-    // if (token) this.request.defaults.headers["Cookie"] = this.cookie;
 
     this.request.interceptors.request.use((config) => {
       config.retryCount = config.retryCount || 0;
@@ -129,7 +128,7 @@ class Client {
     step("Downloading next_data...", this.options.showSteps);
 
     return this.request
-      .get(this.origin_url)
+      .get(`${this.origin_url}/${this.bot === "capybara" ? "Sage" : this.bot}`)
       .then((res) => {
         const jsonRegex =
           /<script id="__NEXT_DATA__" type="application\/json">(.+?)<\/script>/;
@@ -150,7 +149,7 @@ class Client {
   }
 
   async sendMessage(
-    params = { message, bot: "capybara", withChatBreak: true },
+    params = { message, withChatBreak: true },
     callback = () => {},
   ) {
     await this.connectWebSocket();
@@ -182,7 +181,7 @@ class Client {
     gql
       .readyQuery("chatHelpers_sendMessageMutation_Mutation", {
         chatId: chatId,
-        bot: params?.bot || "capybara",
+        bot: this.bot ?? "capybara",
         query: params.message,
         source: null,
         withChatBreak: params.withChatBreak || false,
@@ -275,7 +274,6 @@ class Client {
       humanMessagesOnly: false,
       textMessages: false,
       range: -1,
-      bot: "capybara",
     },
   ) {
     if (!this.next_data || options?.update) await this.getNextData(false);
@@ -384,12 +382,16 @@ class Client {
     await subscriptionsMutation();
   }
 
-  async initialize() {
-    await this.getSettings();
+  async init({ bot = "capybara" }) {
+    const instance = new Client(this.token, this.options);
 
-    await this.subscribe();
+    instance.bot = bot;
 
-    return this;
+    await instance.getSettings();
+
+    await instance.subscribe();
+
+    return instance;
   }
 
   async createBot(

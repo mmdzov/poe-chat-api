@@ -1,5 +1,5 @@
 require("dotenv").config();
-const Client = require("../client");
+const Client = require("../index");
 
 (async () => {
   const instance = new Client(process.env.TOKEN, {

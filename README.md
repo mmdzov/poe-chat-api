@@ -26,7 +26,7 @@ In the next step you need to find your poe cookie from the poe website. To do th
 
 Fill **YOUR-POE-COOKIE** with the copied value
 
-```
+```javascript
 const Client = require("poe-chat-api")
 
 (async () => {

@@ -157,9 +157,8 @@ class Client {
     params = { message, withChatBreak: true },
     callback = (response) => {},
   ) {
-    await this.connectWebSocket();
-
     let counter = 0;
+    let lastUpdate = null;
 
     const wsMessageHandler = (message) => {
       if (counter > 0) return;
@@ -169,9 +168,16 @@ class Client {
 
       data.messages = data.messages.map((item) => JSON.parse(item));
 
-      this.ws.close(1011, "should_close");
-      counter++;
-      callback(data);
+      const suggests =
+        data.messages[0].payload.data?.messageAdded?.suggestedReplies;
+
+      if (suggests) lastUpdate = data;
+
+      if (!suggests && lastUpdate) {
+        // this.ws.close(1011, "should_close");
+        counter++;
+        callback(lastUpdate);
+      }
     };
 
     this.ws.on("message", wsMessageHandler);
@@ -396,6 +402,8 @@ class Client {
     await instance.getSettings();
 
     await instance.subscribe();
+
+    await instance.connectWebSocket();
 
     return instance;
   }

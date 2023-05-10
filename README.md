@@ -7,11 +7,13 @@ A Node.js library for connecting to GPT-3 via Poe.com
 ## Features
 
 - Create bot
+- Get bots
 - Delete bot
 - Send message
 - Get messages
 - Delete all messages
 - Break chat
+- ...
 
 
 ## Installation

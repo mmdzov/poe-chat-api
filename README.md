@@ -1,7 +1,7 @@
 
 # Poe-chat-api
 
-A Node.js library for connecting to GPT-3 via Poe.com
+A Node.js library for connecting to GPT-3.5 via Poe.com
 
 
 ## Features

@@ -1,6 +1,5 @@
 const fs = require("fs");
 const { join } = require("path");
-const { cwd } = require("process");
 const crypto = require("crypto");
 
 class Gql {
@@ -9,7 +8,7 @@ class Gql {
 
   readyQuery(query = "", variables = {}) {
     const queryGetted = fs.readFileSync(
-      join(cwd(), `graphql/${query}.graphql`),
+      join(__dirname, "../", `graphql/${query}.graphql`),
       "utf8",
     );
 
@@ -66,7 +65,11 @@ class Gql {
       const subName = subs[i];
 
       const sub = fs.readFileSync(
-        join(cwd(), `graphql/subscriptions_${subName}_Subscription.graphql`),
+        join(
+          __dirname,
+          "../",
+          `graphql/subscriptions_${subName}_Subscription.graphql`,
+        ),
         "utf8",
       );
 

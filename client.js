@@ -155,7 +155,7 @@ class Client {
 
   async sendMessage(
     params = { message, withChatBreak: true },
-    callback = (response) => {},
+    callback = (response, text) => {},
   ) {
     let counter = 0;
     let lastUpdate = null;
@@ -176,7 +176,10 @@ class Client {
       if (!suggests && lastUpdate) {
         // this.ws.close(1011, "should_close");
         counter++;
-        callback(lastUpdate);
+
+        const text = lastUpdate.messages[0].payload.data?.messageAdded?.text;
+
+        callback(lastUpdate, text);
       }
     };
 
@@ -223,16 +226,14 @@ class Client {
 
         const query = `?min_seq=${this.channel?.minSeq}&channel=${this.channel?.channel}&hash=${this.channel?.channelHash}`;
 
-        ws = new WebSocket(
+        this.ws = new WebSocket(
           `wss://tch${wsDomain}.tch.${this.channel?.baseHost}/up/${this.channel?.boxName}/updates` +
             query,
           {},
         );
-
-        this.ws = ws;
       }
 
-      ws.on("close", async (code, reason) => {
+      this.ws.on("close", async (code, reason) => {
         if (reason.includes("should_close"))
           return step("WebSocket Connection Closed", this.options.showSteps);
 
@@ -253,16 +254,16 @@ class Client {
         }
       });
 
-      ws.on("error", (error) => {
+      this.ws.on("error", (error) => {
         console.error("WebSocket error:", error);
       });
 
-      ws.on("unexpected-response", (e) => {
+      this.ws.on("unexpected-response", (e) => {
         console.log("Unexpected Response: ", e);
       });
 
       const openPromise = new Promise((res, rej) => {
-        ws.on("open", () => {
+        this.ws.on("open", () => {
           step("WebSocket connected!", this.options.showSteps);
           this.wsRetryCount = 0;
 

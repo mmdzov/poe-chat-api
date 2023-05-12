@@ -453,7 +453,11 @@ class Client {
         },
       });
 
-      return data.data.poeBotCreate;
+      const result = data?.data?.poeBotCreate;
+
+      if (!result) throw data;
+
+      return result;
     } catch (e) {
       console.log(e);
     }

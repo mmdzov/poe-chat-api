@@ -1,15 +1,20 @@
 const axios = require("axios");
 const Gql = require("./utils/Gql");
-const WebSocket = require("ws");
 const step = require("./utils/step");
+const WebSocket = require("ws");
+const ObservableArray = require("./utils/ObservableArray");
 
 class Client {
   gql_url = "/api/gql_POST";
   settings_url = "/api/settings";
   origin_url = "https://poe.com";
 
+  answering = new ObservableArray([]);
+  answerQueue = new ObservableArray([]);
+
   channel = {};
   bot = "capybara";
+  pattern = "p@tter#F";
   mainClass = null;
 
   constructor(
@@ -29,6 +34,7 @@ class Client {
 
     this.MAX_RETRIES = options?.request?.max_retries || 25; // 15
     this.RETRY_DELAY = options?.request?.retry_delay || 2000;
+    this.PARALLEL_ANSWER_LIMIT = 1;
 
     this.request = axios.create({
       baseURL: this.origin_url,
@@ -153,63 +159,118 @@ class Client {
       });
   }
 
+  dequeueAnswer() {
+    this.answering.on("change", (method, item) => {
+      if (method === "push") {
+        item.handler();
+      }
+    });
+
+    this.answering.on("change", (method) => {
+      if (
+        method === "remove" &&
+        this.answering.array.length < this.PARALLEL_ANSWER_LIMIT
+      ) {
+        const dequeued = this.answerQueue.pop();
+        if (dequeued) this.answering.push(dequeued);
+      }
+    });
+  }
+
   async sendMessage(
-    params = { message, withChatBreak: true },
-    callback = (response, text) => {},
+    params = {
+      message,
+      withChatBreak: true,
+      messageId: 0,
+    },
+    callback = (response) => {},
   ) {
-    let counter = 0;
-    let lastUpdate = null;
+    let messageId = params?.messageId || Math.floor(Math.random() * 999999999);
 
-    const wsMessageHandler = (message) => {
-      if (counter > 0) return;
-      const response = message.toString("utf-8");
+    const message = this.noPattern
+      ? params.message
+      : `[${this.pattern}-${messageId}]
 
-      let data = JSON.parse(response);
+${params.message}
+  `;
 
-      data.messages = data.messages.map((item) => JSON.parse(item));
+    const handleSendMessage = async () => {
+      let counter = 0;
+      let lastUpdate = null;
 
-      const suggests =
-        data.messages[0].payload.data?.messageAdded?.suggestedReplies;
+      const wsMessageHandler = (message) => {
+        if (counter > 0) return;
+        const response = message.toString("utf-8");
 
-      if (suggests) lastUpdate = data;
+        let data = JSON.parse(response);
 
-      if (!suggests && lastUpdate) {
-        // this.ws.close(1011, "should_close");
-        counter++;
+        data.messages = data.messages.map((item) => JSON.parse(item));
 
-        const text = lastUpdate.messages[0].payload.data?.messageAdded?.text;
+        const messageAdded = data.messages[0]?.payload?.data?.messageAdded;
 
-        callback(lastUpdate, text);
+        const suggests = messageAdded?.suggestedReplies;
+
+        if (suggests) lastUpdate = data;
+
+        const text = messageAdded?.text;
+
+        let [isThis, clearifiedText] =
+          text?.split(`[${this.pattern}-${messageId}]`) || [];
+
+        if (this.noPattern) clearifiedText = text;
+
+        if (
+          messageAdded?.state === "complete" &&
+          messageAdded?.author === "chinchilla"
+        ) {
+          counter++;
+
+          this.answering.remove("messageId", messageId);
+
+          callback(lastUpdate, clearifiedText?.trim());
+        }
+      };
+
+      this.ws.on("message", wsMessageHandler);
+
+      step("Sending message...", this.options.showSteps);
+
+      const chatId =
+        this.next_data.props.pageProps?.payload?.chatOfBotDisplayName?.chatId;
+
+      const gql = new Gql();
+
+      gql
+        .readyQuery("chatHelpers_sendMessageMutation_Mutation", {
+          chatId: chatId,
+          bot: this.bot ?? "capybara",
+          query: message,
+          source: null,
+          withChatBreak: params.withChatBreak || false,
+        })
+        .setHeaders(this.formkey, this.channel.channel);
+
+      try {
+        const res = await this.request.post(this.gql_url, gql.query, {
+          headers: {
+            ...gql.headers,
+          },
+        });
+      } catch (e) {
+        console.log(e);
       }
     };
 
-    this.ws.on("message", wsMessageHandler);
-
-    step("Sending message...", this.options.showSteps);
-
-    const chatId =
-      this.next_data.props.pageProps?.payload?.chatOfBotDisplayName?.chatId;
-
-    const gql = new Gql();
-
-    gql
-      .readyQuery("chatHelpers_sendMessageMutation_Mutation", {
-        chatId: chatId,
-        bot: this.bot ?? "capybara",
-        query: params.message,
-        source: null,
-        withChatBreak: params.withChatBreak || false,
-      })
-      .setHeaders(this.formkey, this.channel.channel);
-
-    try {
-      const res = await this.request.post(this.gql_url, gql.query, {
-        headers: {
-          ...gql.headers,
-        },
+    if (this.answering.array.length >= this.PARALLEL_ANSWER_LIMIT) {
+      this.answerQueue.unshift({
+        messageId,
+        handler: handleSendMessage,
       });
-    } catch (e) {
-      console.log(e);
+    } else {
+      this.answering.push({
+        messageId,
+        handler: handleSendMessage,
+      });
     }
 
     return this;
@@ -231,26 +292,32 @@ class Client {
             query,
           {},
         );
+
+        this.ws.setMaxListeners(100000);
       }
 
       this.ws.on("close", async (code, reason) => {
-        if (reason.includes("should_close"))
-          return step("WebSocket Connection Closed", this.options.showSteps);
-
-        step("WebSocket disconnected!", this.options.showSteps);
-        if (this.wsRetryCount < this.MAX_RETRIES) {
-          step(
-            `Retrying WebSocket connection in ${this.RETRY_DELAY}ms...`,
-            this.options.showSteps,
-          );
-
-          await new Promise((resolve) => setTimeout(resolve, this.RETRY_DELAY));
-          await connect();
-          this.wsRetryCount++;
+        if (reason.includes("should_close")) {
+          step("WebSocket Connection Closed", this.options.showSteps);
+          process.exit();
         } else {
-          console.log(
-            `WebSocket connection failed after ${this.MAX_RETRIES} attempts.`,
-          );
+          step("WebSocket disconnected!", this.options.showSteps);
+          if (this.wsRetryCount < this.MAX_RETRIES) {
+            step(
+              `Retrying WebSocket connection in ${this.RETRY_DELAY}ms...`,
+              this.options.showSteps,
+            );
+
+            await new Promise((resolve) =>
+              setTimeout(resolve, this.RETRY_DELAY),
+            );
+            await connect();
+            this.wsRetryCount++;
+          } else {
+            console.log(
+              `WebSocket connection failed after ${this.MAX_RETRIES} attempts.`,
+            );
+          }
         }
       });
 
@@ -394,10 +461,15 @@ class Client {
     await subscriptionsMutation();
   }
 
-  async init(options = { bot: "capybara" }) {
+  async init(options = { bot: "capybara", pattern: "", noPattern: true }) {
     const instance = new Client(this.token, this.options);
 
     instance.bot = options.bot;
+
+    options?.pattern ? (instance.pattern = options?.pattern) : null;
+
+    instance.noPattern = options?.noPattern;
+
     this.mainClass = this;
 
     await instance.getSettings();
@@ -405,6 +477,8 @@ class Client {
     await instance.subscribe();
 
     await instance.connectWebSocket();
+
+    instance.dequeueAnswer();
 
     return instance;
   }

@@ -15,6 +15,7 @@ class Client {
   channel = {};
   bot = "capybara";
   pattern = "p@tter#F";
+  noPattern = true;
   mainClass = null;
 
   constructor(
@@ -221,7 +222,8 @@ ${params.message}
 
         if (
           messageAdded?.state === "complete" &&
-          messageAdded?.author === "chinchilla"
+          (messageAdded?.author === "chinchilla" ||
+            messageAdded.author === "capybara")
         ) {
           counter++;
 

@@ -20,8 +20,6 @@ class Group {
       (a, b) => getLenMsgQueue(a) - getLenMsgQueue(b),
     )[0];
 
-    console.log(client.bot, getLenMsgQueue(client));
-
     await client.sendMessage(params, callback);
 
     return this;

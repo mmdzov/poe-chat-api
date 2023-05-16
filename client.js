@@ -3,6 +3,7 @@ const Gql = require("./utils/Gql");
 const step = require("./utils/step");
 const WebSocket = require("ws");
 const ObservableArray = require("./utils/ObservableArray");
+const Group = require("./group");
 
 class Client {
   gql_url = "/api/gql_POST";
@@ -222,7 +223,7 @@ ${params.message}
 
         if (
           messageAdded?.state === "complete" &&
-          (messageAdded?.author === "chinchilla" ||
+          ((messageAdded?.author === "chinchilla" && isThis === "") ||
             messageAdded.author === "capybara")
         ) {
           counter++;
@@ -483,6 +484,39 @@ ${params.message}
     instance.dequeueAnswer();
 
     return instance;
+  }
+
+  async initGroup(bots = [{ bot: "capybara", pattern: "", noPattern: true }]) {
+    const clients = [];
+
+    let requests = [];
+
+    for (let i in bots) {
+      const client = bots[i];
+
+      requests.push(async () => {
+        const instance = new Client(this.token, this.options);
+
+        instance.bot = client.bot;
+
+        client?.pattern ? (instance.pattern = client?.pattern) : null;
+        instance.noPattern = client?.noPattern;
+
+        await instance.getSettings();
+
+        await instance.subscribe();
+
+        await instance.connectWebSocket();
+
+        instance.dequeueAnswer();
+
+        clients.push(instance);
+      });
+    }
+
+    await Promise.all(requests.map((item) => item()));
+
+    return new Group(clients);
   }
 
   async createBot(

@@ -1,8 +1,6 @@
-
 # Poe-chat-api
 
 A Node.js library for connecting to GPT-3.5 via Poe.com
-
 
 ## Features
 
@@ -14,7 +12,6 @@ A Node.js library for connecting to GPT-3.5 via Poe.com
 - Delete all messages
 - Break chat
 - ...
-
 
 ## Installation
 
@@ -29,119 +26,26 @@ In the next step you need to find your poe cookie from the poe website. To do th
 Fill **YOUR-POE-COOKIE** with the copied value
 
 ```javascript
-const Client = require("poe-chat-api")
-
-(async () => {
+const Client = require("poe-chat-api")(async () => {
   const instance = new Client("YOUR-POE-COOKIE", {
     showSteps: true,
   });
-})()
-
-```
-
-
-## Usage/Examples
-
-### Create bot
-```javascript
-const Client = require("poe-chat-api");
-
-(async () => {
-  const instance = new Client("YOUR-POE-COOKIE", {
-    showSteps: true,
-  });
-
-  const client = await instance.init();
-
-  const res = await client.createBot({
-    prompt: `Talk to me like a pirate.`,
-  });
-
-  console.log(res);
 })();
-
 ```
 
-### Send message
-```javascript
-const Client = require("poe-chat-api");
-
-(async () => {
-  const instance = new Client("YOUR-POE-COOKIE", {
-    showSteps: true,
-  });
-
-  const client = await instance.init();
-
-  await client.sendMessage(
-    {
-      message: "Hello world",
-    },
-    (response) => {
-      console.log(response);
-    },
-  );
-})();
-
-```
-
-
-### Get messages
-```javascript
-const Client = require("poe-chat-api");
-
-(async () => {
-  const instance = new Client("YOUR-POE-COOKIE", {
-    showSteps: true,
-  });
-
-  const client = await instance.init();
-
-  const messages = await client.getMessages({
-    range: 2, // The last 2 messages
-  });
-
-  console.log(messages);
-})();
-
-```
-
-### Send message bot
-```javascript
-const Client = require("poe-chat-api");
-
-(async () => {
-  const instance = new Client("YOUR-POE-COOKIE", {
-    showSteps: true,
-  });
-
-  const client = await instance.init({ bot: "YOUR_POE_BOT_NAME" });
-
-  await client.sendMessage(
-    {
-      message: "Hello world",
-    },
-    (response) => {
-      console.log(response);
-    },
-  );
-})();
-
-```
-
-### Send parallel messages
-
-For simultaneous sending, it must be noPattern: false, and the format of sending and receiving messages must be changed. To do this, do the following steps.
+For parallel sending, it must be noPattern: false, and the format of sending and receiving messages must be changed. To do this, do the following steps.
 
 #### 1- First, enter your bot profile in poe and add the following text in the prompt section
 
 ```
+
 Remember that you will be given a code at the beginning of each message and you must enter it at the beginning of each reply in the format [p@tter#F-Code].
 for example:
 [p@tter#F-Code]
 your answer.
 
 The code with the p@tter#F pattern is sent in [p@tter#F-Code] format and received in the same format.
+
 ```
 
 Above, a template containing the message is sent so that we can understand which response corresponds to which message.
@@ -157,53 +61,3 @@ If you are developing an project, I recommend you to use this method instead of 
 #### 2- Set noPattern to false as below.
 
 Note: This feature is currently only supported using bots
-
-```javascript
-require("dotenv").config();
-const Client = require("../index");
-
-(async () => {
-  const instance = new Client("YOUR-POE-COOKIE", {
-    showSteps: true,
-  });
-
-  const client = await instance.init({
-    bot: "NetnairEvilV1",
-    noPattern: false,
-  });
-
-  let messages = [
-    "Hi",
-    "I want to know what makes a person happy",
-    "I meant drinks",
-    "I correct, alcoholic drink",
-    "I want to buy one and surprise my friend with it. What kind do you suggest?",
-  ];
-
-  let requests = [];
-
-  for (let i in messages) {
-    const message = messages[i];
-
-    requests.push(
-      new Promise(async (resolve, rej) => {
-        await client.sendMessage(
-          {
-            message: message,
-            withChatBreak: true,
-          },
-          (res, text) => {
-            resolve(text);
-          },
-        );
-      }),
-    );
-  }
-
-  const res = await Promise.all(requests);
-
-  console.log(res);
-})();
-
-```
-

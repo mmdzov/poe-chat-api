@@ -33,6 +33,7 @@ const Client = require("poe-chat-api")(async () => {
 })();
 ```
 
+
 For parallel sending, it must be noPattern: false, and the format of sending and receiving messages must be changed. To do this, do the following steps.
 
 #### 1- First, enter your bot profile in poe and add the following text in the prompt section
@@ -58,6 +59,6 @@ The middle part is a type of space (-) and the last part is the messageId that i
 
 If you are developing an project, I recommend you to use this method instead of the normal method of sending messages.
 
-#### 2- Set noPattern to false as below.
+#### 2- Set noPattern: false
 
 Note: This feature is currently only supported using bots

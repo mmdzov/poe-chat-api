@@ -11,7 +11,6 @@ class Group {
       withChatBreak: true,
       messageId: 0,
     },
-    callback = (response) => {},
   ) {
     const getLenMsgQueue = (client) =>
       client.answering.array.length + client.answerQueue.array.length;
@@ -20,9 +19,9 @@ class Group {
       (a, b) => getLenMsgQueue(a) - getLenMsgQueue(b),
     )[0];
 
-    await client.sendMessage(params, callback);
-
-    return this;
+    return await new Promise((res) => {
+      client.sendMessage(params, (response, text) => res([response, text]));
+    });
   }
 }
 

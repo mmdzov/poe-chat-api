@@ -538,7 +538,7 @@ ${params.message}
 
     const variables = {
       model: data?.model ?? "chinchilla",
-      handle: data?.name ?? `Bot${Math.floor(Math.random() * 999999999)}`,
+      handle: data?.handle ?? `Bot${Math.floor(Math.random() * 999999999)}`,
       prompt: data?.prompt ?? "",
       isPromptPublic: data?.isPromptPublic ?? false,
       introduction: data?.introduction ?? "",

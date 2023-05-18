@@ -27,7 +27,6 @@ const Client = require("../index");
     "I meant drinks",
     "I correct, alcoholic drink",
     "I want to buy one and surprise my friend with it. What kind do you suggest?",
-    "Hi my friend",
   ];
 
   let requests = [];
@@ -37,15 +36,12 @@ const Client = require("../index");
 
     requests.push(
       new Promise(async (resolve, rej) => {
-        await group.sendMessage(
-          {
-            message: message,
-            withChatBreak: true,
-          },
-          (res, text) => {
-            resolve(text);
-          },
-        );
+        const [, text] = await group.sendMessage({
+          message: message,
+          withChatBreak: true,
+        });
+
+        resolve(text);
       }),
     );
   }

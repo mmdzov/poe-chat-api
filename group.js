@@ -10,6 +10,9 @@ class Group {
       message,
       withChatBreak: true,
       messageId: 0,
+      paginationMethod: false,
+      paginationCount: 10,
+      paginationRefreshDelay: 3000, //ms
     },
   ) {
     const getLenMsgQueue = (client) =>

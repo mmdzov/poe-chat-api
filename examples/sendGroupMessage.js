@@ -39,6 +39,7 @@ const Client = require("../index");
         const [, text] = await group.sendMessage({
           message: message,
           withChatBreak: true,
+          paginationMethod: true,
         });
 
         resolve(text);

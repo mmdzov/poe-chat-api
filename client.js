@@ -43,8 +43,8 @@ class Client {
       headers: {
         Cookie: this.cookie,
         "Content-Type": "application/json",
-        Referrer: "https://poe.com/",
         Origin: this.origin_url,
+        // Referrer: `https://poe.com/${this.bot}`,
         Host: "poe.com",
         "Sec-Fetch-Dest": "empty",
         "Sec-Fetch-Mode": "cors",
@@ -184,6 +184,9 @@ class Client {
       message,
       withChatBreak: true,
       messageId: 0,
+      paginationMethod: false,
+      paginationCount: 10,
+      paginationRefreshDelay: 3000, //ms
     },
     callback = (response) => {},
   ) {
@@ -200,7 +203,7 @@ ${params.message}
       let counter = 0;
       let lastUpdate = null;
 
-      const wsMessageHandler = (message) => {
+      const wsMessageHandler = async (message) => {
         if (counter > 0) return;
         const response = message.toString("utf-8");
 
@@ -214,7 +217,11 @@ ${params.message}
 
         if (suggests) lastUpdate = data;
 
-        const text = messageAdded?.text;
+        let text = messageAdded?.text;
+
+        if (data.messages[0]?.message_type === "refetchChannel") {
+          await getEdge();
+        }
 
         let [isThis, clearifiedText] =
           text?.split(`[${this.pattern}-${messageId}]`) || [];
@@ -234,7 +241,48 @@ ${params.message}
         }
       };
 
-      this.ws.on("message", wsMessageHandler);
+      const getEdge = async () => {
+        const result = await this.paginationQuery({
+          count: params?.paginationCount || 10,
+        });
+
+        let edge = null;
+        let text = "";
+
+        for (let x in result) {
+          const node = result[x];
+
+          edge = node.messagesConnection.edges.filter(
+            (item) =>
+              item.node.author === "chinchilla" &&
+              item.node.text?.includes(`[${this.pattern}-${messageId}]`),
+          );
+
+          if (edge.length > 0) {
+            text = edge[0].node.text;
+
+            let [isThis, clearifiedText] =
+              text?.split(`[${this.pattern}-${messageId}]`) || [];
+
+            counter++;
+
+            this.answering.remove("messageId", messageId);
+
+            callback(edge, clearifiedText?.trim());
+
+            break;
+          }
+        }
+
+        if (edge?.length === 0) {
+          setTimeout(async () => {
+            await getEdge();
+          }, params?.paginationRefreshDelay || 3000);
+        }
+      };
+
+      if (params?.paginationMethod === false)
+        this.ws?.on("message", wsMessageHandler);
 
       step("Sending message...", this.options.showSteps);
 
@@ -259,6 +307,8 @@ ${params.message}
             ...gql.headers,
           },
         });
+
+        if (params?.paginationMethod) await getEdge();
       } catch (e) {
         console.log(e);
       }
@@ -624,6 +674,35 @@ ${params.message}
       });
 
       return true;
+    } catch (e) {
+      console.log(e);
+    }
+  }
+
+  async paginationQuery(
+    params = {
+      count: 5,
+      cursor: null,
+    },
+  ) {
+    const gql = new Gql();
+
+    gql
+      .readyQuery("ChatListPaginationQuery", {
+        ...params,
+        id: this?.next_data?.props?.pageProps?.payload?.chatOfBotDisplayName
+          ?.id,
+      })
+      .setHeaders(this.formkey, this.channel.channel);
+
+    try {
+      const { data } = await this.request.post(this.gql_url, gql.query, {
+        headers: {
+          ...gql.headers,
+        },
+      });
+
+      return data?.data;
     } catch (e) {
       console.log(e);
     }

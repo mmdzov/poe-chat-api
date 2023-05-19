@@ -188,7 +188,7 @@ class Client {
       paginationCount: 10,
       paginationRefreshDelay: 3000, //ms
     },
-    callback = (response) => {},
+    callback = (response,text) => {},
   ) {
     let messageId = params?.messageId || Math.floor(Math.random() * 999999999);
 

@@ -281,7 +281,7 @@ ${params.message}
         }
       };
 
-      if (params?.paginationMethod === false)
+      if (!params?.paginationMethod)
         this.ws?.on("message", wsMessageHandler);
 
       step("Sending message...", this.options.showSteps);
